@@ -203,3 +203,71 @@ print ''
 processRepository('../..')
 
 print "}"
+# cpp-ethereum is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>
+#
+#------------------------------------------------------------------------------
+# Python script to generate a DOT graph showing the dependency graph of
+# the modules within the cpp-ethereum project.   It is a mixture of
+# dynamically-generated and hard-coded content to augment and improve
+# the results.
+#
+# The script was originally written by Bob Summerwill to assist his own
+# efforts at understanding the dependencies for the cpp-ethereum-cross
+# project which cross-builds cpp-ethereum, and then contributed to the
+# main cpp-ethereum project.
+#
+# See https://github.com/doublethinkco/cpp-ethereum-cross for more
+# information on the cross-builds project.
+#
+# The documentation for cpp-ethereum is hosted at http://cpp-ethereum.org
+#
+# (c) 2015-2016 cpp-ethereum contributors.
+#------------------------------------------------------------------------------
+
+import os
+import re
+
+dependencyPattern = "eth_use\((.*)\s+(OPTIONAL|REQUIRED)\s+(.*)\)"
+
+
+# Returns a string which lists all the dependency edges for a given
+# library or application, based on the declared OPTIONAL and REQUIRED
+# dependencies within the CMake file for that library or application.
+def getDependencyEdges(submodulePath, library):
+    cmakeListsPath = os.path.join(os.path.join(submodulePath, library),
+                                  "CMakeLists.txt")
+    outputString = ""
+
+    if os.path.exists(cmakeListsPath):
+        with open(cmakeListsPath) as fileHandle:
+            for line in fileHandle.readlines():
+                result = re.search(dependencyPattern, line)
+                if result:
+                    fromNode = result.group(1)
+                    toNodes = result.group(3).split()
+                    for toNode in toNodes:
+                        # Merge all JsonRpc::* nodes to simplify the output graph.
+                        # Not much value in the details there.
+                        if toNode.startswith("JsonRpc::"):
+                            toNode = "json-rpc-cpp"
+                        elif "::" in toNode:
+                            toNode = toNode.split("::")[1]
+                        edgeText = '"' + fromNode + '" -> "' + toNode + '"'
+                        if "OPTIONAL" in line:
+                            edgeText = edgeText + " [style=dotted]"
+                        outputString = outputString + edgeText + "\n"
+
+    return outputString
+
+
+# Return a string which is a list of all the library and application
+# names within a given git sub-module directory.
+def getLibraryAndApplicationNames(submodulePath):
+    outputString = ""
+    for subDirectoryName in os.listdir(s
